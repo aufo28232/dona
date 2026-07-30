@@ -64,7 +64,7 @@ function comIp(ip: string, init: RequestInit = {}, cookie?: string): RequestInit
 
 async function pegarCaptcha(ip: string) {
   const res = await fetch(`${BASE}/api/captcha`, comIp(ip, { method: 'POST' }))
-  return (await res.json()) as { id: string; imagem: string }
+  return (await res.json()) as { id: string; expiraEm: string }
 }
 
 /**
@@ -143,6 +143,27 @@ async function main() {
     await fetch(`${BASE}/api/auth/me`, { headers: { cookie: sessaoCookie('tw-me', 'quem_sou_eu') } })
   ).json()
   checar('com cookie válido, /api/auth/me identifica a conta', meLogado.logado === true && meLogado.login === 'quem_sou_eu')
+
+  // ---- Captcha como imagem de verdade ------------------------------------
+  // Regressão específica: a imagem já veio embutida como base64 dentro do
+  // JSON de /api/captcha e chegava corrompida em trânsito na Vercel. Agora
+  // é servida à parte, como image/svg+xml de verdade — confere isso aqui.
+  console.log('\nCAPTCHA COMO IMAGEM')
+  const captchaImg = await pegarCaptcha('10.0.0.200')
+  checar('POST /api/captcha não devolve mais a imagem no corpo', !('imagem' in captchaImg))
+
+  const resImagem = await fetch(`${BASE}/api/captcha/${captchaImg.id}/imagem`)
+  const svg = await resImagem.text()
+  checar('GET .../imagem responde 200', resImagem.status === 200)
+  checar(
+    'content-type é image/svg+xml',
+    (resImagem.headers.get('content-type') ?? '').includes('image/svg+xml'),
+  )
+  checar('svg começa com <svg e termina com </svg>', svg.trim().startsWith('<svg') && svg.trim().endsWith('</svg>'))
+  checar('svg tem o bloco <defs> do gradiente de fundo', svg.includes('<defs>') && svg.includes('</defs>'))
+
+  const imagemInexistente = await fetch(`${BASE}/api/captcha/00000000-0000-0000-0000-000000000000/imagem`)
+  checar('imagem de captcha inexistente dá 404', imagemInexistente.status === 404)
 
   // ---- Login obrigatório --------------------------------------------------
   console.log('\nLOGIN COM A TWITCH')

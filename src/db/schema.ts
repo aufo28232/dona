@@ -66,6 +66,10 @@ export const captchas = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     resposta: text('resposta').notNull(),
+    // O SVG fica gravado aqui e é servido por /api/captcha/[id]/imagem como
+    // uma resposta de imagem de verdade — não mais embutido como base64
+    // dentro do JSON, que se mostrou corrompido em trânsito na Vercel.
+    imagemSvg: text('imagem_svg').notNull(),
     ipHash: text('ip_hash').notNull(),
     expiraEm: timestamp('expira_em', { withTimezone: true }).notNull(),
     usadoEm: timestamp('usado_em', { withTimezone: true }),

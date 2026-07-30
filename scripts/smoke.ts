@@ -90,6 +90,7 @@ async function main() {
     .insert(captchas)
     .values({
       resposta: desafio.resposta,
+      imagemSvg: desafio.imagemSvg,
       ipHash: ipA,
       expiraEm: new Date(Date.now() + 5 * 60_000),
     })

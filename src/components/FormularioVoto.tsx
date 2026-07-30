@@ -14,7 +14,7 @@ export type CandidatoPublico = {
   fotoUrl: string
 }
 
-type Captcha = { id: string; imagem: string; expiraEm: string }
+type Captcha = { id: string; expiraEm: string }
 
 type Sessao = { logado: true; login: string; nomeExibicao: string; avatarUrl: string } | { logado: false }
 
@@ -450,7 +450,7 @@ export default function FormularioVoto({ candidatos }: { candidatos: CandidatoPu
                 ) : captcha ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
-                    src={captcha.imagem}
+                    src={`/api/captcha/${captcha.id}/imagem`}
                     alt="Continha de matemática para provar que você não é um robô"
                     width={240}
                     height={90}

@@ -110,8 +110,12 @@ function ruidoPontos(qtd: number): string {
 export type DesafioCaptcha = {
   /** Resposta correta, em string. Fica SÓ no servidor. */
   resposta: string
-  /** SVG embrulhado num data URI — vai num <img>, nunca em innerHTML. */
-  imagemDataUri: string
+  /**
+   * Markup SVG puro (não um data URI). Fica gravado no banco e é servido por
+   * /api/captcha/[id]/imagem como `image/svg+xml` de verdade — embrulhar isso
+   * em base64 dentro de um JSON gigante se mostrou instável em trânsito.
+   */
+  imagemSvg: string
   /**
    * Enunciado em texto ("7 + 3"). SÓ PARA LOG/DEBUG NO SERVIDOR — mandar isso
    * para o client mataria o captcha, já que o bot leria a conta pronta em vez
@@ -191,7 +195,7 @@ export function gerarDesafioCaptcha(): DesafioCaptcha {
 
   return {
     resposta: String(resultado),
-    imagemDataUri: `data:image/svg+xml;base64,${Buffer.from(svg, 'utf8').toString('base64')}`,
+    imagemSvg: svg,
     enunciado: `${a} ${op} ${b}`,
   }
 }

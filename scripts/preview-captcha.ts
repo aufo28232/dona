@@ -20,7 +20,7 @@ ${amostras
   .map(
     (a) =>
       `<figure style="display:inline-block;margin:8px">
-         <img src="${a.imagemDataUri}" width="240" height="90">
+         <img src="data:image/svg+xml;base64,${Buffer.from(a.imagemSvg, 'utf8').toString('base64')}" width="240" height="90">
          <figcaption style="font-size:12px;opacity:.6">${a.enunciado} = ${a.resposta}</figcaption>
        </figure>`,
   )

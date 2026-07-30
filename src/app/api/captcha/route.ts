@@ -13,8 +13,9 @@ export const dynamic = 'force-dynamic'
  * POST (e não GET) de propósito: nenhum proxy ou CDN vai cachear a resposta,
  * e cada chamada precisa ser uma emissão nova.
  *
- * A resposta devolve APENAS id + imagem. A conta em texto e a resposta ficam
- * no servidor.
+ * A resposta devolve só o `id` — a imagem em si é buscada depois pelo client
+ * via GET /api/captcha/[id]/imagem, como uma imagem de verdade (não embutida
+ * em base64 aqui). A conta em texto e a resposta ficam no servidor.
  */
 export async function POST(request: Request) {
   const ipHash = clientIpHash(request.headers)
@@ -31,13 +32,13 @@ export async function POST(request: Request) {
 
   const [linha] = await db
     .insert(captchas)
-    .values({ resposta: desafio.resposta, ipHash, expiraEm })
+    .values({ resposta: desafio.resposta, imagemSvg: desafio.imagemSvg, ipHash, expiraEm })
     .returning({ id: captchas.id })
 
   void limpezaOportunista()
 
   return NextResponse.json(
-    { id: linha.id, imagem: desafio.imagemDataUri, expiraEm: expiraEm.toISOString() },
+    { id: linha.id, expiraEm: expiraEm.toISOString() },
     { headers: { 'Cache-Control': 'no-store' } },
   )
 }
