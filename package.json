@@ -1,0 +1,41 @@
+{
+  "name": "melhor-membro",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio",
+    "db:seed": "tsx src/db/seed.ts",
+    "test:smoke": "tsx scripts/smoke.ts",
+    "test:db": "tsx scripts/e2e-db.ts",
+    "test:e2e": "tsx scripts/e2e-http.ts",
+    "captcha:preview": "tsx scripts/preview-captcha.ts"
+  },
+  "dependencies": {
+    "drizzle-orm": "^0.44.2",
+    "next": "^15.5.4",
+    "postgres": "^3.4.5",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.4",
+    "@electric-sql/pglite-socket": "^0.2.7",
+    "@tailwindcss/postcss": "^4.1.11",
+    "@types/node": "^22.15.0",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "dotenv": "^16.5.0",
+    "drizzle-kit": "^0.31.1",
+    "playwright": "^1.62.1",
+    "tailwindcss": "^4.1.11",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.3"
+  }
+}
