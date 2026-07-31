@@ -16,7 +16,7 @@ export default function BotaoCompartilhar({ ranking }: { ranking: LinhaRanking[]
       .map((l, i) => `${['🥇', '🥈', '🥉'][i]} @${l.nome} — ${l.votos} voto${l.votos === 1 ? '' : 's'}`)
       .join('\n')
 
-    return `🏆 Melhor Membro da Live da Dona — placar parcial:\n\n${podio}\n\nVota tu também: ${url}`
+    return `🏆 Melhor Membro da Live do judas50k — placar parcial:\n\n${podio}\n\nVota tu também: ${url}`
   }
 
   const compartilhar = async () => {
@@ -25,7 +25,7 @@ export default function BotaoCompartilhar({ ranking }: { ranking: LinhaRanking[]
     // Web Share só existe em https/localhost e mobile; desktop cai no clipboard.
     if (typeof navigator !== 'undefined' && navigator.share) {
       try {
-        await navigator.share({ title: 'Melhor Membro da Live da Dona', text: texto })
+        await navigator.share({ title: 'Melhor Membro da Live do judas50k', text: texto })
         return
       } catch {
         // usuário cancelou ou o share falhou — segue pro clipboard

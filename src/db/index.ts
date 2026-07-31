@@ -4,8 +4,13 @@ import * as schema from './schema'
 
 type Db = ReturnType<typeof drizzle<typeof schema>>
 
-// Em dev o hot-reload recria o módulo a cada mudança; sem esse cache global a
-// gente vaza um pool de conexões por reload até o Postgres recusar conexão.
+// Cache global do cliente/instância — vale em dev (hot-reload recria o
+// módulo a cada mudança) E em produção (a Vercel reaproveita a mesma
+// instância "quente" entre requisições). Sem cachear em produção também,
+// cada acesso a `db.x` criava um `postgres()` novo, com pool próprio, nunca
+// fechado — vazava conexão contra o pooler do Supabase até esgotar, e sob
+// esse estresse o PgBouncer chegou a embaralhar respostas entre conexões
+// (foi a causa real de um bug de captcha corrompido em produção).
 const globalForDb = globalThis as unknown as {
   __pgClient?: ReturnType<typeof postgres>
   __db?: Db
@@ -43,10 +48,8 @@ function criarDb(): Db {
 
   const instancia = drizzle(client, { schema })
 
-  if (process.env.NODE_ENV !== 'production') {
-    globalForDb.__pgClient = client
-    globalForDb.__db = instancia
-  }
+  globalForDb.__pgClient = client
+  globalForDb.__db = instancia
 
   return instancia
 }

@@ -14,7 +14,7 @@ export type CandidatoPublico = {
   fotoUrl: string
 }
 
-type Captcha = { id: string; expiraEm: string }
+type Captcha = { id: string; enunciado: string; expiraEm: string }
 
 type Sessao = { logado: true; login: string; nomeExibicao: string; avatarUrl: string } | { logado: false }
 
@@ -446,18 +446,15 @@ export default function FormularioVoto({ candidatos }: { candidatos: CandidatoPu
             <div className="superficie flex flex-col gap-4 rounded-2xl p-4 sm:flex-row sm:items-center">
               <div className="flex items-center gap-3">
                 {carregandoCaptcha ? (
-                  <div className="h-[90px] w-[240px] animate-pulse rounded-xl bg-ink-4" />
+                  <div className="h-[90px] w-[150px] animate-pulse rounded-xl bg-ink-4" />
                 ) : captcha ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={`/api/captcha/${captcha.id}/imagem`}
-                    alt="Continha de matemática para provar que você não é um robô"
-                    width={240}
-                    height={90}
-                    className="rounded-xl border border-white/10"
-                  />
+                  <div className="flex h-[90px] w-[150px] shrink-0 items-center justify-center rounded-xl border border-twitch/25 bg-gradient-to-br from-ink-3 to-ink-4 shadow-inner">
+                    <span className="font-display select-none text-3xl font-bold tracking-wide text-twitch-light">
+                      {captcha.enunciado}
+                    </span>
+                  </div>
                 ) : (
-                  <div className="flex h-[90px] w-[240px] items-center justify-center rounded-xl border border-white/10 bg-ink-3 text-xs text-white/40">
+                  <div className="flex h-[90px] w-[150px] items-center justify-center rounded-xl border border-white/10 bg-ink-3 text-xs text-white/40">
                     captcha indisponível
                   </div>
                 )}

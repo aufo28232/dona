@@ -1,8 +1,10 @@
-# 🏆 Melhor Membro da Live da Dona
+# 🏆 Melhor Membro da Live do judas50k
 
-Site de votação da comunidade para eleger o melhor membro da live da Dona.
+Site de votação da comunidade para eleger o melhor membro da live do judas50k.
 13 candidatos, login obrigatório com a Twitch, 1 voto a cada 2 horas por IP
-*e* por conta, captcha caseiro e placar que atualiza a cada 30 minutos.
+*e* por conta, captcha caseiro em texto e placar que atualiza a cada 30 minutos.
+A votação (abrir/fechar, prazo de 48h, resetar dados e anunciar o vencedor) é
+controlada ao vivo em `/admin`, protegido por senha.
 
 > Nome do projeto ainda provisório (`melhor-membro`).
 
@@ -68,10 +70,10 @@ de `TWITCH_CLIENT_ID`/`TWITCH_CLIENT_SECRET` reais — simula uma sessão já lo
 cookie com a mesma chave que o servidor usa (dev cai num segredo fixo quando `SESSION_SECRET`
 não está definida), então o handshake de verdade com a Twitch não entra no teste.
 
-Para conferir o captcha a olho nu:
+Para conferir umas amostras do captcha no terminal:
 
 ```bash
-npm run captcha:preview   # gera scripts/captcha-preview.html
+npm run captcha:preview
 ```
 
 ## Variáveis de ambiente
@@ -85,6 +87,7 @@ npm run captcha:preview   # gera scripts/captcha-preview.html
 | `TWITCH_REDIRECT_URI` | não | Só se o host do request divergir do domínio final |
 | `SESSION_SECRET` | sim em produção | Assina o cookie de login. **Trocar desloga todo mundo.** |
 | `ADMIN_TOKEN` | não | Libera `/api/admin/export`. Vazia = rota responde 404. |
+| `ADMIN_PASSWORD` | sim em produção | Senha do painel `/admin`. Dev cai no fallback `45892832`. |
 | `NEXT_PUBLIC_SITE_URL` | não | URL usada no botão de compartilhar |
 
 Gere o sal e o segredo de sessão com o mesmo comando (rode duas vezes, um valor pra cada):
@@ -116,6 +119,8 @@ exige.
 
 Para o voto contar, tudo isto precisa passar **no servidor**:
 
+0. A urna precisa estar **aberta** (controlado em `/admin` — fora do prazo de
+   48h ou antes do admin abrir, `/api/captcha` e `/api/vote` respondem 409)
 1. Candidato selecionado existe no banco
 2. Telefone com formato BR válido (DDD + número; não é verificado por SMS)
 3. Sessão de login com a Twitch válida (cookie assinado, não expirado)
@@ -150,19 +155,37 @@ quem troca de rede pra votar de novo com a mesma conta.
 
 ### O captcha
 
-Imagem SVG gerada no servidor com uma conta simples (`+`, `-`, `×`). Os
-dígitos são desenhados como **traços vetoriais**, não como texto: se fossem
-`<text>`, um bot leria a resposta direto do markup sem precisar de OCR. Cada
-glifo tem rotação, escala e inclinação próprias, e o fundo tem ruído por cima
-e por baixo.
+Continha simples (`+`, `-`, `×`) gerada no servidor e mostrada em **texto puro**
+pro usuário resolver (ex: `"7 + 3"` → digita `10`). Já existiu uma versão que
+desenhava a conta como SVG pra dificultar leitura automática, mas dava
+problema de renderização em produção — o valor real de defesa contra bot
+preguiçoso vem das outras camadas, então trocamos pela versão simples e
+confiável.
 
-A resposta fica só no banco. O token expira em 5 minutos e é de uso único
-(consumido com `UPDATE ... WHERE usado_em IS NULL RETURNING`, então duas
+A resposta certa fica só no banco. O token expira em 5 minutos e é de uso
+único (consumido com `UPDATE ... WHERE usado_em IS NULL RETURNING`, então duas
 requisições simultâneas com o mesmo token não passam as duas).
 
 Isolado, isso não seguraria um atacante dedicado — mas aliado ao login
 obrigatório da Twitch, o custo de atacar sobe bastante: precisa de contas de
 verdade *e* resolver o captcha de cada uma.
+
+### O painel `/admin`
+
+Protegido por senha (`ADMIN_PASSWORD`, cookie assinado HMAC separado do login
+da Twitch). De lá dá para:
+
+- **Abrir/reiniciar a votação** — define `fase = 'aberta'` e um prazo de 48h
+  a partir de agora (mostrado ao vivo na home como contagem regressiva)
+- **Fechar a votação** manualmente, antes ou depois do prazo
+- **Anunciar o vencedor** — a home some com tudo (formulário, placar) e passa
+  a mostrar só o nome/foto do vencedor + a música `public/winner.mp3` tocando de fundo
+- **Resetar os dados** — apaga votos/tentativas/captchas e volta pro estado
+  inicial (urna fechada, sem vencedor). Exige digitar `RESETAR` pra confirmar,
+  além da sessão de admin. Os candidatos (`streamers`) não são apagados.
+
+Coloque a música de comemoração em `public/winner.mp3` — se o arquivo não
+existir, a tela do vencedor mostra só o nome/foto, sem quebrar.
 
 ### O placar
 
@@ -194,8 +217,9 @@ não virar um dump de telefones aberto.
 ```
 src/
   app/
-    page.tsx                 votação
+    page.tsx                 votação (ou tela de vencedor, ou urna fechada)
     ranking/page.tsx         placar (ISR 30 min)
+    admin/page.tsx           painel do admin (senha + controle da votação)
     api/
       auth/twitch/           login OAuth (redirect + callback)
       auth/me/                identidade da sessão atual (pública, sem dados sensíveis)
@@ -206,11 +230,18 @@ src/
       feed/                  últimos votos, anonimizados
       ranking/               placar em JSON
       admin/export/          CSV bruto, protegido por token
-  components/                UI (formulário, pódio, confete, ticker…)
+      admin/login|logout/    sessão do painel /admin
+      admin/painel/          estado + candidatos + placar (protegido)
+      admin/abrir|fechar/    controla a fase da votação
+      admin/anunciar|desanunciar/  define/desfaz o vencedor
+      admin/resetar/         apaga tudo e zera a configuração
+  components/                UI (formulário, pódio, confete, ticker, tela de vencedor…)
   db/                        schema Drizzle, seed, candidatos
-  lib/                       captcha, ip, sessão, twitch (oauth), validação, rate limit, ranking
+  lib/                       captcha, config (fase da votação), ip, sessão, admin-auth,
+                              twitch (oauth), validação, rate limit, ranking
 scripts/                     testes e utilitários de conferência
 drizzle/                     migrations SQL geradas
+public/                      estáticos — coloque winner.mp3 aqui
 ```
 
 ## Mexendo nos candidatos

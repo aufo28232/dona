@@ -17,7 +17,7 @@ import { captchas, streamers, voteAttempts, votes } from '../src/db/schema'
 import { CANDIDATOS } from '../src/db/candidatos'
 import { getRanking, totalDeVotos } from '../src/lib/ranking'
 import { excedeuTentativas, msRestantesDoCooldown, registrarTentativa } from '../src/lib/rate-limit'
-import { gerarDesafioCaptcha } from '../src/lib/captcha-image'
+import { gerarDesafioCaptcha } from '../src/lib/captcha'
 import { validarTelefone } from '../src/lib/validation'
 import { ATTEMPT_LIMIT, COOLDOWN_MS } from '../src/lib/constants'
 
@@ -90,7 +90,6 @@ async function main() {
     .insert(captchas)
     .values({
       resposta: desafio.resposta,
-      imagemSvg: desafio.imagemSvg,
       ipHash: ipA,
       expiraEm: new Date(Date.now() + 5 * 60_000),
     })

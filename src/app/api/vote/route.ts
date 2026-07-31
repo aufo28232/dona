@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server'
 import { db } from '@/db'
 import { captchas, streamers, votes } from '@/db/schema'
 import { COOLDOWN_MS, MIN_FILL_MS, SESSION_COOKIE } from '@/lib/constants'
+import { votacaoEstaAberta } from '@/lib/config'
 import { clientIpHash } from '@/lib/ip'
 import {
   excedeuTentativas,
@@ -32,6 +33,16 @@ const texto = (v: unknown): string => (typeof v === 'string' ? v : '')
 export async function POST(request: Request) {
   const ipHash = clientIpHash(request.headers)
   const userAgent = request.headers.get('user-agent')?.slice(0, 500) ?? null
+
+  // ---- Portão: a urna precisa estar aberta -------------------------------
+  // Checado antes de tudo, sem contar como "tentativa" — não é abuso, é só
+  // um estado normal do site (antes de abrir, ou depois de encerrar).
+  if (!(await votacaoEstaAberta())) {
+    return NextResponse.json(
+      { erro: 'A votação não está aberta no momento.', codigo: 'VOTACAO_FECHADA' },
+      { status: 409 },
+    )
+  }
 
   // ---- Camada 1: rate limit de TENTATIVAS ------------------------------
   // Sem isso, o captcha de 1 dígito seria brutável em segundos.

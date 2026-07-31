@@ -26,6 +26,13 @@ export const SESSION_TTL_SECONDS = 6 * 60 * 60
 export const OAUTH_STATE_COOKIE = 'melhor_membro_oauth_state'
 export const OAUTH_STATE_TTL_SECONDS = 10 * 60
 
+/** Duração da janela de votação, aberta pelo admin em /admin. */
+export const VOTACAO_DURACAO_MS = 48 * 60 * 60 * 1000
+
+/** Cookie de sessão do painel /admin. Separado do cookie de login da Twitch. */
+export const ADMIN_SESSION_COOKIE = 'melhor_membro_admin'
+export const ADMIN_SESSION_TTL_SECONDS = 12 * 60 * 60
+
 export const MEDALHAS = ['🥇', '🥈', '🥉'] as const
 
 /** Legendas rotativas do líder — só zoeira. */

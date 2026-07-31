@@ -12,8 +12,8 @@ import { getRanking, totalDeVotos, type LinhaRanking } from '@/lib/ranking'
 export const revalidate = 1800
 
 export const metadata: Metadata = {
-  title: 'Placar — Melhor Membro da Live da Dona',
-  description: 'Quem tá ganhando a eleição de melhor membro da live da Dona.',
+  title: 'Placar — Melhor Membro da Live do judas50k',
+  description: 'Quem tá ganhando a eleição de melhor membro da live do judas50k.',
 }
 
 export default async function PaginaRanking() {

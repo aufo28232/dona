@@ -1,0 +1,1 @@
+Coloque aqui o arquivo de audio winner.mp3 (musica tocada de fundo na tela do vencedor, depois que o admin anuncia em /admin).

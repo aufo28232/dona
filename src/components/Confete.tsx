@@ -14,7 +14,7 @@ type Particula = {
   cor: string
 }
 
-const CORES = ['#9146ff', '#bf94ff', '#ffd45e', '#ffffff', '#e5d4ff', '#5c16c5']
+const CORES = ['#17c3d4', '#7ee9f2', '#ffd45e', '#ffffff', '#ff4fa3', '#0a6e7d']
 
 /**
  * Confete em canvas, sem dependência externa. Dispara quando `gatilho` muda de

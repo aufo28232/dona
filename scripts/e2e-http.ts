@@ -16,6 +16,7 @@ import { assinarSessao } from '../src/lib/session'
 const BASE = process.env.E2E_BASE ?? 'http://localhost:3000'
 const ESPIA = process.env.E2E_PEEK ?? 'http://127.0.0.1:5434'
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN ?? 'token-de-teste'
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? '45892832'
 
 let falhas = 0
 let passes = 0
@@ -64,7 +65,7 @@ function comIp(ip: string, init: RequestInit = {}, cookie?: string): RequestInit
 
 async function pegarCaptcha(ip: string) {
   const res = await fetch(`${BASE}/api/captcha`, comIp(ip, { method: 'POST' }))
-  return (await res.json()) as { id: string; expiraEm: string }
+  return (await res.json()) as { id: string; enunciado: string; expiraEm: string }
 }
 
 /**
@@ -87,6 +88,18 @@ async function votar(ip: string, corpo: Record<string, unknown>, cookie?: string
     comIp(ip, { method: 'POST', body: JSON.stringify(corpo) }, cookie),
   )
   return { status: res.status, corpo: await res.json().catch(() => ({})) }
+}
+
+/** Loga no /admin e devolve o cookie de sessão (só o par nome=valor), ou null se falhar. */
+async function loginAdmin(): Promise<string | null> {
+  const res = await fetch(`${BASE}/api/admin/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ senha: ADMIN_PASSWORD }),
+  })
+  if (!res.ok) return null
+  const setCookie = res.headers.get('set-cookie')
+  return setCookie ? setCookie.split(';')[0] : null
 }
 
 /** Fluxo feliz completo: logado, captcha novo, espera o tempo mínimo, resposta certa. */
@@ -114,6 +127,48 @@ async function votoValido(
 }
 
 async function main() {
+  // ---- Urna fechada (estado inicial, antes do admin abrir) ---------------
+  console.log('\nPORTÃO DA VOTAÇÃO (urna ainda fechada)')
+  const captchaComUrnaFechada = await fetch(`${BASE}/api/captcha`, comIp('10.0.0.10', { method: 'POST' }))
+  checar('captcha não é emitido com a urna fechada', captchaComUrnaFechada.status === 409)
+
+  const votoComUrnaFechada = await votar(
+    '10.0.0.11',
+    { streamerId: 1, telefone: '11912345678', captchaId: 'x', captchaResposta: '0' },
+    sessaoCookie('tw-urna-fechada', 'urna_fechada'),
+  )
+  checar(
+    'voto é rejeitado com a urna fechada',
+    votoComUrnaFechada.status === 409 && votoComUrnaFechada.corpo.codigo === 'VOTACAO_FECHADA',
+    `status ${votoComUrnaFechada.status}`,
+  )
+
+  // ---- Admin: login e abertura da votação ---------------------------------
+  console.log('\nADMIN — LOGIN E ABERTURA')
+  const loginErrado = await fetch(`${BASE}/api/admin/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ senha: 'senha-bem-errada' }),
+  })
+  checar('login de admin com senha errada é negado', loginErrado.status === 401)
+
+  const cookieAdmin = await loginAdmin()
+  checar('login de admin com senha certa funciona', cookieAdmin !== null)
+
+  const painelSemSessao = await fetch(`${BASE}/api/admin/painel`)
+  checar('painel sem sessão de admin é negado', painelSemSessao.status === 401)
+
+  const abrirSemSessao = await fetch(`${BASE}/api/admin/abrir`, { method: 'POST' })
+  checar('abrir votação sem sessão de admin é negado', abrirSemSessao.status === 401)
+
+  const abriu = await fetch(`${BASE}/api/admin/abrir`, {
+    method: 'POST',
+    headers: { cookie: cookieAdmin ?? '' },
+  })
+  const abriuCorpo = await abriu.json()
+  checar('admin abre a votação', abriu.status === 200 && abriuCorpo.estado?.fase === 'aberta')
+  checar('abrir define prazo de 48h', typeof abriuCorpo.estado?.terminaEm === 'string')
+
   // ---- Rotas públicas ----------------------------------------------------
   console.log('\nROTAS PÚBLICAS')
   const ranking0 = await (await fetch(`${BASE}/api/ranking`)).json()
@@ -144,26 +199,18 @@ async function main() {
   ).json()
   checar('com cookie válido, /api/auth/me identifica a conta', meLogado.logado === true && meLogado.login === 'quem_sou_eu')
 
-  // ---- Captcha como imagem de verdade ------------------------------------
-  // Regressão específica: a imagem já veio embutida como base64 dentro do
-  // JSON de /api/captcha e chegava corrompida em trânsito na Vercel. Agora
-  // é servida à parte, como image/svg+xml de verdade — confere isso aqui.
-  console.log('\nCAPTCHA COMO IMAGEM')
-  const captchaImg = await pegarCaptcha('10.0.0.200')
-  checar('POST /api/captcha não devolve mais a imagem no corpo', !('imagem' in captchaImg))
-
-  const resImagem = await fetch(`${BASE}/api/captcha/${captchaImg.id}/imagem`)
-  const svg = await resImagem.text()
-  checar('GET .../imagem responde 200', resImagem.status === 200)
+  // ---- Captcha em texto ---------------------------------------------------
+  // Regressão específica: a versão anterior desenhava a continha como SVG, e
+  // isso quebrava em produção. Agora o enunciado vem em texto puro no corpo
+  // de /api/captcha, sem rota de imagem nenhuma.
+  console.log('\nCAPTCHA EM TEXTO')
+  const captchaTexto = await pegarCaptcha('10.0.0.200')
   checar(
-    'content-type é image/svg+xml',
-    (resImagem.headers.get('content-type') ?? '').includes('image/svg+xml'),
+    'POST /api/captcha devolve o enunciado em texto',
+    typeof captchaTexto.enunciado === 'string' && captchaTexto.enunciado.length > 0,
+    `veio ${JSON.stringify(captchaTexto)}`,
   )
-  checar('svg começa com <svg e termina com </svg>', svg.trim().startsWith('<svg') && svg.trim().endsWith('</svg>'))
-  checar('svg tem o bloco <defs> do gradiente de fundo', svg.includes('<defs>') && svg.includes('</defs>'))
-
-  const imagemInexistente = await fetch(`${BASE}/api/captcha/00000000-0000-0000-0000-000000000000/imagem`)
-  checar('imagem de captcha inexistente dá 404', imagemInexistente.status === 404)
+  checar('não existe mais rota de imagem do captcha', (await fetch(`${BASE}/api/captcha/${captchaTexto.id}/imagem`)).status === 404)
 
   // ---- Login obrigatório --------------------------------------------------
   console.log('\nLOGIN COM A TWITCH')
@@ -347,6 +394,69 @@ async function main() {
     }
   }
   checar('brute-force no captcha leva 429', bloqueou)
+
+  // ---- Admin: fechar, anunciar vencedor, resetar -------------------------
+  console.log('\nADMIN — FECHAR / ANUNCIAR / RESETAR')
+  const fechou = await fetch(`${BASE}/api/admin/fechar`, { method: 'POST', headers: { cookie: cookieAdmin ?? '' } })
+  checar('admin fecha a votação', fechou.status === 200)
+
+  const captchaDepoisDeFechar = await fetch(`${BASE}/api/captcha`, comIp('10.0.2.1', { method: 'POST' }))
+  checar('captcha não é emitido depois de fechar', captchaDepoisDeFechar.status === 409)
+
+  const votoDepoisDeFechar = await votar(
+    '10.0.2.1',
+    { streamerId, telefone: '11912345678', captchaId: 'irrelevante', captchaResposta: '0' },
+    sessaoCookie('tw-pos-fechamento', 'pos_fechamento'),
+  )
+  checar(
+    'voto é rejeitado depois de fechar',
+    votoDepoisDeFechar.status === 409 && votoDepoisDeFechar.corpo.codigo === 'VOTACAO_FECHADA',
+    `status ${votoDepoisDeFechar.status}`,
+  )
+
+  const anunciarInexistente = await fetch(`${BASE}/api/admin/anunciar`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', cookie: cookieAdmin ?? '' },
+    body: JSON.stringify({ streamerId: 999999 }),
+  })
+  checar('anunciar candidato inexistente é rejeitado', anunciarInexistente.status === 400)
+
+  const anunciou = await fetch(`${BASE}/api/admin/anunciar`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', cookie: cookieAdmin ?? '' },
+    body: JSON.stringify({ streamerId }),
+  })
+  const anunciouCorpo = await anunciou.json()
+  checar('admin anuncia o vencedor', anunciou.status === 200 && anunciouCorpo.estado?.fase === 'encerrada')
+
+  const homeComVencedor = await (await fetch(`${BASE}/`)).text()
+  checar('home mostra a tela de vencedor depois do anúncio', homeComVencedor.includes('Resultado final'))
+
+  const desanunciou = await fetch(`${BASE}/api/admin/desanunciar`, { method: 'POST', headers: { cookie: cookieAdmin ?? '' } })
+  checar('admin desfaz o anúncio', desanunciou.status === 200)
+
+  const resetSemFraseCerta = await fetch(`${BASE}/api/admin/resetar`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', cookie: cookieAdmin ?? '' },
+    body: JSON.stringify({ confirmar: 'errado' }),
+  })
+  checar('reset sem a frase de confirmação certa é rejeitado', resetSemFraseCerta.status === 400)
+
+  const votosAntesDoReset = (await (await fetch(`${BASE}/api/ranking`)).json()).totalVotos
+  checar('tem votos gravados antes do reset', votosAntesDoReset > 0, `veio ${votosAntesDoReset}`)
+
+  const resetou = await fetch(`${BASE}/api/admin/resetar`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', cookie: cookieAdmin ?? '' },
+    body: JSON.stringify({ confirmar: 'RESETAR' }),
+  })
+  checar('admin reseta os dados', resetou.status === 200)
+
+  const votosDepoisDoReset = (await (await fetch(`${BASE}/api/ranking`)).json()).totalVotos
+  checar('reset zera os votos', votosDepoisDoReset === 0, `veio ${votosDepoisDoReset}`)
+
+  const urnaDepoisDoReset = await fetch(`${BASE}/api/captcha`, comIp('10.0.3.1', { method: 'POST' }))
+  checar('reset deixa a urna fechada de novo', urnaDepoisDoReset.status === 409)
 
   console.log(`\n${'─'.repeat(50)}`)
   console.log(falhas === 0 ? `✅ ${passes} checagens passaram` : `❌ ${falhas} falha(s) de ${passes + falhas}`)

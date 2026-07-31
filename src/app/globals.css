@@ -1,17 +1,20 @@
 @import 'tailwindcss';
 
 @theme {
-  --color-twitch: #9146ff;
-  --color-twitch-light: #bf94ff;
-  --color-twitch-soft: #e5d4ff;
-  --color-twitch-deep: #5c16c5;
+  /* Ciano como cor principal (com gradiente pro teal escuro), magenta/rosa
+     como cor complementar de contraste — a mesma dupla vibrante de letreiro
+     de neon, só que sóbria o bastante pra não cansar o olho num site inteiro. */
+  --color-twitch: #17c3d4;
+  --color-twitch-light: #7ee9f2;
+  --color-twitch-soft: #c3f6fa;
+  --color-twitch-deep: #0a6e7d;
   --color-pink: #ff4fa3;
   --color-pink-soft: #ffb8dd;
 
-  --color-ink: #0c0716;
-  --color-ink-2: #16101f;
-  --color-ink-3: #201933;
-  --color-ink-4: #2c2344;
+  --color-ink: #061417;
+  --color-ink-2: #0b1f23;
+  --color-ink-3: #10292e;
+  --color-ink-4: #163940;
 
   --color-ouro: #ffd45e;
   --color-prata: #d3dbe4;

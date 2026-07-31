@@ -18,18 +18,18 @@ const jakarta = Plus_Jakarta_Sans({
 })
 
 export const metadata: Metadata = {
-  title: 'Melhor Membro da Live da Dona',
+  title: 'Melhor Membro da Live do judas50k',
   description:
-    'A eleição mais séria da internet: vote no melhor membro da live da Dona. Um voto a cada 2 horas.',
+    'A eleição mais séria da internet: vote no melhor (ou menos pior) participante da live do judas50k. Um voto a cada 2 horas.',
   openGraph: {
-    title: 'Melhor Membro da Live da Dona 🏆',
-    description: 'Vote no melhor membro da live da Dona. Um voto a cada 2 horas, sem chorar.',
+    title: 'Melhor Membro da Live do judas50k 🏆',
+    description: 'Vote no melhor participante da live do judas50k. Um voto a cada 2 horas, sem chorar.',
     type: 'website',
   },
 }
 
 export const viewport: Viewport = {
-  themeColor: '#0c0716',
+  themeColor: '#061417',
   width: 'device-width',
   initialScale: 1,
 }
@@ -49,7 +49,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <span className="font-display text-[15px] font-semibold leading-tight tracking-tight sm:text-base">
                 Melhor Membro
                 <span className="block text-[10px] font-semibold uppercase tracking-[0.2em] text-twitch-light sm:text-[11px]">
-                  da live da Dona
+                  da live do judas50k
                 </span>
               </span>
             </Link>

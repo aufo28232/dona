@@ -66,10 +66,6 @@ export const captchas = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     resposta: text('resposta').notNull(),
-    // O SVG fica gravado aqui e é servido por /api/captcha/[id]/imagem como
-    // uma resposta de imagem de verdade — não mais embutido como base64
-    // dentro do JSON, que se mostrou corrompido em trânsito na Vercel.
-    imagemSvg: text('imagem_svg').notNull(),
     ipHash: text('ip_hash').notNull(),
     expiraEm: timestamp('expira_em', { withTimezone: true }).notNull(),
     usadoEm: timestamp('usado_em', { withTimezone: true }),
@@ -97,5 +93,29 @@ export const voteAttempts = pgTable(
   (t) => [index('vote_attempts_ip_hash_criado_em_idx').on(t.ipHash, t.criadoEm)],
 )
 
+/**
+ * Configuração da votação — SEMPRE uma linha só (id fixo = 1), controlada
+ * pelo painel /admin. `fase`:
+ *   'fechada'   — urna fechada (estado inicial, ou depois de um "Fechar" manual)
+ *   'aberta'    — recebendo votos, com prazo em `terminaEm`
+ *   'encerrada' — vencedor anunciado; o site mostra só a tela de resultado
+ *
+ * Não referencia `streamers.id` com FK: o "resetar dados" apaga tudo em
+ * `votes`/`captchas`/`vote_attempts` sem tocar em `streamers`, mas o vencedor
+ * é uma decisão manual do admin que deve sobreviver a esse reset até uma nova
+ * votação ser aberta de novo — uma FK com onDelete('set null') sobre um id
+ * que nunca é apagado não muda nada na prática, então mantemos simples.
+ */
+export const configuracao = pgTable('configuracao', {
+  id: integer('id').primaryKey().default(1),
+  fase: text('fase').notNull().default('fechada'),
+  iniciadaEm: timestamp('iniciada_em', { withTimezone: true }),
+  terminaEm: timestamp('termina_em', { withTimezone: true }),
+  vencedorId: integer('vencedor_id'),
+  anunciadoEm: timestamp('anunciado_em', { withTimezone: true }),
+  atualizadoEm: timestamp('atualizado_em', { withTimezone: true }).notNull().defaultNow(),
+})
+
 export type Streamer = typeof streamers.$inferSelect
 export type Vote = typeof votes.$inferSelect
+export type Configuracao = typeof configuracao.$inferSelect
